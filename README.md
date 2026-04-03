@@ -3,8 +3,6 @@
 ## 📌 Project Overview
 This project is an end-to-end data analytics solution for Olist, a Brazilian e-commerce dataset containing over 100,000 real anonymized orders from 2016 to 2018. The goal of this project was to analyze business metrics, customer behavior, and logistics performance to uncover actionable insights.
 
-**🔗 [View Live Power BI Dashboard Here](#) *(Replace # with your Power BI Service Link)***
-
 ## 🛠️ Tools & Technologies Used
 * **Database:** MySQL (Queries, JOINs, Aggregations)
 * **Data Visualization:** Power BI (DAX, Data Modeling)
