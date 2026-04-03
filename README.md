@@ -24,7 +24,6 @@ The dataset was sourced from Kaggle and contains 9 relational tables including:
 4. **Logistics Bottleneck:** **8.38% (7,827)** of all deliveries were late. A state-level breakdown revealed that states CE (Ceará) and MA (Maranhão) have the lowest on-time delivery rates.
 
 ## 📸 Dashboard Screenshots
-*(Upload your dashboard screenshots to GitHub and add them here)*
 - **Page 1:** Executive Overview
 - **Page 2:** Product & Category Analysis
 - **Page 3:** Customer Insights
