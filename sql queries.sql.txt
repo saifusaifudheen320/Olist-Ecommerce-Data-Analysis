@@ -1,0 +1,310 @@
+* OLIST E-COMMERCE DATA ANALYSIS PROJECT
+ * ---------------------------------------
+ * This script covers the end-to-end process of importing raw CSV data,
+ * cleaning and transforming data types (especially date formatting),
+ * and running analytical queries to extract business insights.
+ */
+
+
+
+-- ==============================================================================
+-- 1. DATABASE SETUP
+-- ==============================================================================
+
+
+-- Create the main database and select it for use
+CREATE DATABASE olist;
+USE olist;
+SELECT DATABASE();
+SHOW TABLES;
+
+-- ==============================================================================
+-- 2. TABLE CREATION & DATA IMPORT (ETL)
+-- ==============================================================================
+-- ---------------------------------------------------------
+-- A. Customers Table
+-- ---------------------------------------------------------
+CREATE TABLE customers (
+    customer_id VARCHAR(50),
+    customer_unique_id VARCHAR(50),
+    customer_zip_code_prefix INT,
+    customer_city VARCHAR(100),
+    customer_state VARCHAR(10)
+);
+-- Note: Update the path as necessary for your local machine
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/olist_customers_dataset.csv'
+INTO TABLE customers
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+-- Verify import
+SELECT * FROM customers LIMIT 5;
+-- ---------------------------------------------------------
+-- B. Orders Table & Date Transformation
+-- ---------------------------------------------------------
+DROP TABLE IF EXISTS orders;
+CREATE TABLE orders (
+    order_id VARCHAR(50),
+    customer_id VARCHAR(50),
+    order_status VARCHAR(20),
+    order_purchase_timestamp VARCHAR(50),
+    order_approved_at VARCHAR(50),
+    order_delivered_carrier_date VARCHAR(50),
+    order_delivered_customer_date VARCHAR(50),
+    order_estimated_delivery_date VARCHAR(50)
+);
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/olist_orders_dataset.csv'
+INTO TABLE orders
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+-- Data Cleaning: Handling nulls disguised as '1900-01-00 00:00:00'
+SET SQL_SAFE_UPDATES = 0;
+UPDATE orders
+SET 
+order_purchase_timestamp = NULLIF(order_purchase_timestamp, '1900-01-00 00:00:00'),
+order_approved_at = NULLIF(order_approved_at, '1900-01-00 00:00:00'),
+order_delivered_carrier_date = NULLIF(order_delivered_carrier_date, '1900-01-00 00:00:00'),
+order_delivered_customer_date = NULLIF(order_delivered_customer_date, '1900-01-00 00:00:00'),
+order_estimated_delivery_date = NULLIF(order_estimated_delivery_date, '1900-01-00 00:00:00');
+-- Data Cleaning: Converting text strings into proper DATETIME formats
+UPDATE orders
+SET 
+order_purchase_timestamp = STR_TO_DATE(order_purchase_timestamp, '%Y-%m-%d %H:%i:%s'),
+order_approved_at = STR_TO_DATE(order_approved_at, '%Y-%m-%d %H:%i:%s'),
+order_delivered_carrier_date = STR_TO_DATE(order_delivered_carrier_date, '%Y-%m-%d %H:%i:%s'),
+order_delivered_customer_date = STR_TO_DATE(order_delivered_customer_date, '%Y-%m-%d %H:%i:%s'),
+order_estimated_delivery_date = STR_TO_DATE(order_estimated_delivery_date, '%Y-%m-%d %H:%i:%s');
+ALTER TABLE orders 
+MODIFY order_purchase_timestamp DATETIME,
+MODIFY order_approved_at DATETIME,
+MODIFY order_delivered_carrier_date DATETIME,
+MODIFY order_delivered_customer_date DATETIME,
+MODIFY order_estimated_delivery_date DATETIME;
+SELECT * FROM orders LIMIT 5;
+
+-- ---------------------------------------------------------
+-- C. Products Table & Text Cleaning
+-- ---------------------------------------------------------
+
+DROP TABLE IF EXISTS products;
+CREATE TABLE products (
+    product_id VARCHAR(50),
+    product_category_name VARCHAR(100),
+    product_name_lenght VARCHAR(50),
+    product_description_lenght VARCHAR(50),
+    product_photos_qty VARCHAR(50),
+    product_weight_g VARCHAR(50),
+    product_length_cm VARCHAR(50),
+    product_height_cm VARCHAR(50),
+    product_width_cm VARCHAR(50)
+);
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/olist_products_dataset.csv'
+INTO TABLE products
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+-- Data Cleaning: Removing invisible carriage returns and newlines from strings
+UPDATE products
+SET 
+product_name_lenght = NULLIF(TRIM(REPLACE(REPLACE(product_name_lenght, '\r', ''), '\n', '')), ''),
+product_description_lenght = NULLIF(TRIM(REPLACE(REPLACE(product_description_lenght, '\r', ''), '\n', '')), ''),
+product_photos_qty = NULLIF(TRIM(REPLACE(REPLACE(product_photos_qty, '\r', ''), '\n', '')), ''),
+product_weight_g = NULLIF(TRIM(REPLACE(REPLACE(product_weight_g, '\r', ''), '\n', '')), ''),
+product_length_cm = NULLIF(TRIM(REPLACE(REPLACE(product_length_cm, '\r', ''), '\n', '')), ''),
+product_height_cm = NULLIF(TRIM(REPLACE(REPLACE(product_height_cm, '\r', ''), '\n', '')), ''),
+product_width_cm = NULLIF(TRIM(REPLACE(REPLACE(product_width_cm, '\r', ''), '\n', '')), '');
+-- Converting dimensional and measurement columns from VARCHAR to INT
+ALTER TABLE products
+MODIFY product_name_lenght INT,
+MODIFY product_description_lenght INT,
+MODIFY product_photos_qty INT,
+MODIFY product_weight_g INT,
+MODIFY product_length_cm INT,
+MODIFY product_height_cm INT,
+MODIFY product_width_cm INT;
+
+-- ---------------------------------------------------------
+-- D. Sellers & Payments Tables
+-- ---------------------------------------------------------
+
+CREATE TABLE sellers (
+    seller_id VARCHAR(50),
+    seller_zip_code_prefix INT,
+    seller_city VARCHAR(100),
+    seller_state VARCHAR(10)
+);
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/olist_sellers_dataset.csv'
+INTO TABLE sellers
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+CREATE TABLE payments (
+    order_id VARCHAR(50),
+    payment_sequential INT,
+    payment_type VARCHAR(50),
+    payment_installments INT,
+    payment_value FLOAT
+);
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/olist_order_payments_dataset.csv'
+INTO TABLE payments
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+SELECT COUNT(*) FROM sellers;
+SELECT COUNT(*) FROM payments;
+
+-- ---------------------------------------------------------
+-- E. Order Items Table
+-- ---------------------------------------------------------
+CREATE TABLE order_items (
+    order_id VARCHAR(50),
+    order_item_id INT,
+    product_id VARCHAR(50),
+    seller_id VARCHAR(50),
+    shipping_limit_date VARCHAR(50),
+    price FLOAT,
+    freight_value FLOAT
+);
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/olist_order_items_dataset.csv'
+INTO TABLE order_items
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+-- Data Cleaning: Formatting shipping limit date
+SET SQL_SAFE_UPDATES = 0;
+UPDATE order_items
+SET shipping_limit_date = NULLIF(TRIM(REPLACE(REPLACE(shipping_limit_date, '\r',''), '\n','')), '');
+UPDATE order_items
+SET shipping_limit_date = STR_TO_DATE(shipping_limit_date, '%d-%m-%Y %H:%i');
+ALTER TABLE order_items
+MODIFY shipping_limit_date DATETIME;
+SELECT * FROM order_items LIMIT 5;
+
+-- ---------------------------------------------------------
+-- F. Reviews Table
+-- ---------------------------------------------------------
+CREATE TABLE reviews (
+    review_id VARCHAR(50),
+    order_id VARCHAR(50),
+    review_score INT,
+    review_comment_title VARCHAR(255),
+    review_comment_message TEXT,
+    review_creation_date VARCHAR(50),
+    review_answer_timestamp VARCHAR(50)
+);
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/olist_order_reviews_dataset.csv'
+INTO TABLE reviews
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+-- Data cleaning: Preparing review timestamps 
+SET SQL_SAFE_UPDATES = 0;
+UPDATE reviews
+SET 
+review_creation_date = NULLIF(TRIM(REPLACE(REPLACE(review_creation_date, '\r',''), '\n','')), ''),
+review_answer_timestamp = NULLIF(TRIM(REPLACE(REPLACE(review_answer_timestamp, '\r',''), '\n','')), '');
+UPDATE reviews
+SET 
+review_creation_date = STR_TO_DATE(review_creation_date, '%d-%m-%Y %H:%i'),
+review_answer_timestamp = STR_TO_DATE(review_answer_timestamp, '%d-%m-%Y %H:%i');
+ALTER TABLE reviews
+MODIFY review_creation_date DATETIME,
+MODIFY review_answer_timestamp DATETIME;
+SELECT review_creation_date FROM reviews LIMIT 5;
+
+-- ---------------------------------------------------------
+-- G. Geolocation & Category Translation Tables
+-- ---------------------------------------------------------
+CREATE TABLE geolocation (
+    geolocation_zip_code_prefix INT,
+    geolocation_lat FLOAT,
+    geolocation_lng FLOAT,
+    geolocation_city VARCHAR(100),
+    geolocation_state VARCHAR(10)
+);
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/olist_geolocation_dataset.csv'
+INTO TABLE geolocation
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+CREATE TABLE category_translation (
+    product_category_name VARCHAR(100),
+    product_category_name_english VARCHAR(100)
+);
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/product_category_name_translation.csv'
+INTO TABLE category_translation
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+SHOW TABLES;
+
+-- ==============================================================================
+-- 3. EXPLORATORY DATA ANALYSIS (BUSINESS QUESTIONS)
+-- ==============================================================================
+
+-- KPI 1: What is the total revenue generated?
+SELECT ROUND(SUM(payment_value), 2) AS total_revenue
+FROM payments;
+
+-- KPI 2: What is the monthly revenue trend?
+SELECT 
+    DATE_FORMAT(o.order_purchase_timestamp, '%Y-%m') AS month,
+    ROUND(SUM(p.payment_value), 2) AS revenue
+FROM orders o
+JOIN payments p ON o.order_id = p.order_id
+GROUP BY month
+ORDER BY month;
+
+-- KPI 3: Who are our top 10 customers by total spending?
+SELECT 
+	c.customer_id,
+	c.customer_city,
+	ROUND(SUM(p.payment_value), 2) AS total_spent
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+JOIN payments p ON o.order_id = p.order_id
+GROUP BY c.customer_id, c.customer_city
+ORDER BY total_spent DESC
+LIMIT 10;
+
+-- KPI 4: What is the top-selling product category by order volume?
+SELECT 
+    ct.product_category_name_english AS category,
+    COUNT(oi.order_id) AS total_orders
+FROM order_items oi
+JOIN products pr ON oi.product_id = pr.product_id
+JOIN category_translation ct ON pr.product_category_name = ct.product_category_name
+GROUP BY category
+ORDER BY total_orders DESC
+LIMIT 10;
+
+-- KPI 5: What is the overall average customer review score?
+SELECT 
+ROUND(AVG(review_score), 2) AS avg_rating
+FROM reviews;
+
+-- KPI 6: How many orders experienced delivery delays?
+SELECT 
+COUNT(*) AS delayed_orders
+FROM orders 
+WHERE order_delivered_customer_date > order_estimated_delivery_date;
+
+-- KPI 7: Which cities generate the highest number of orders?
+SELECT 
+    customer_city,
+    COUNT(*) AS total_orders
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY customer_city
+ORDER BY total_orders DESC
+LIMIT 10;
